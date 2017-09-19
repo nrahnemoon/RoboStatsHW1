@@ -9,5 +9,9 @@ def getExpertPredictions(experts):
 def getBestExpertSumLoss(experts):
 	sumLosses = []
 	for expert in experts:
-		sumLosses << expert.getLossSum()
+		sumLosses.append(expert.getLossSum())
 	return min(sumLosses)
+
+def resetExperts(experts):
+	for expert in experts:
+		expert.reset()

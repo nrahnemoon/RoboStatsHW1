@@ -1,11 +1,18 @@
-import "utils.py"
+from utils import *
+import random
+import numpy
+
+####################
+### WMA Learner ####
+####################
 
 class WeightedMajorityAlgorithmLearner:
 
-	experts = []
-	weights = []
-
 	def __init__(self, world, experts, eta=0.5):
+
+		self.experts = []
+		self.weights = []
+
 		self.world = world
 		self.experts = experts
 		self.eta = eta
@@ -14,22 +21,29 @@ class WeightedMajorityAlgorithmLearner:
 		self.losses = []
 		self.predictions = []
 
-	def updateExpertPredictions(self):
+	def reset(self):
+		self.weights = len(self.experts) * [1]
+		self.losses = []
+		self.predictions = []
 
-		for expert in self.experts:
-			expert.updatePrediction()
+	def setWorld(self, world):
+		self.world = world
 
-	def getExpertPredictions(self):
 
-		expertPredictions = []
-		for expert in self.experts:
-			expertPredictions.append(expert.getPrediction())
+	def setExperts(self, experts):
+		self.experts = experts
+
+	def setEta(self, eta):
+		self.eta = eta
+
+	def getEta(self):
+		return self.eta
 
 	def updateLoss(self):
-		self.losses.append(abs(self.prediction - self.worldLabel))
+		self.losses.append(abs(self.getPrediction() - self.world.getLabel()))
 
 	def updatePrediction(self):
-		self.predictions.append(round(float(numpy.dot(self.weights, self.expertPredictions)) / sum(self.weights)))
+		self.predictions.append(round(float(numpy.dot(self.weights, getExpertPredictions(self.experts))) / sum(self.weights)))
 
 	def getPrediction(self):
 		return self.predictions[-1]
@@ -44,18 +58,46 @@ class WeightedMajorityAlgorithmLearner:
 		return self.weights
 
 	def getAverageCumulativeRegret(self):
-		return (self.getLossSum()/len(self.losses)) - self.getBestExpertSumLoss(self.experts)
+		# print "Best expert loss: " + str(getBestExpertSumLoss(self.experts))
+		# print "Num losses: " + str(len(self.losses))
+		# print "Loss Sum: " + str(self.getLossSum())
+		return (self.getLossSum() - getBestExpertSumLoss(self.experts))/len(self.losses)
+
+	def getCumulativeLoss(self):
+		return numpy.cumsum(self.losses)
 
 	def updateWeights(self):
 		
-		expertLosers = []
+		expertLosers = numpy.array([])
 		for expert in self.experts:
-			if self.world.getLabel() == self.expert.getPrediction(): # the expert is a winner
-				expertLosers.append(0) # 0 because we don't want to apply eta
+			if self.world.getLabel() == expert.getPrediction(): # the expert is a winner
+				expertLosers= numpy.append(expertLosers, 0) # 0 because we don't want to apply eta
 			else: # the expert is a loser
-				expertLosers.append(1) # 1 because we want to apply eta
+				expertLosers= numpy.append(expertLosers, 1) # 1 because we want to apply eta
 
-		self.weightUpdater = numpy.multiply(([self.eta] * len(self.weights)), expertLosers) # Apply eta only to the losers
+		expertWinners = 1 - expertLosers
+		self.weightUpdater = expertWinners + numpy.multiply(([self.eta] * len(self.weights)), expertLosers) # Apply eta only to the losers
 		self.weights = numpy.multiply(self.weights, self.weightUpdater)
 
+	def getName(self):
+		return "WMA Learner"
+
+###############################
+### Randomized WMA Learner ####
+###############################
+
 class RandomizedWeightedMajorityAlgorithmLearner(WeightedMajorityAlgorithmLearner):
+
+	def updatePrediction(self):
+		
+		randomSelector = random.random()
+		normalizedWeights = numpy.divide(self.weights, float(sum(self.weights)))
+		weightSum = 0
+		
+		for idx, weight in enumerate(normalizedWeights):
+			weightSum += weight
+			if randomSelector < weightSum:
+				self.predictions.append(self.experts[idx].getPrediction())
+
+	def getName(self):
+		return "Randomized WMA Learner"
